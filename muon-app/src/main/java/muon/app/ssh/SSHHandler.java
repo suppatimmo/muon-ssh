@@ -210,7 +210,7 @@ public class SSHHandler implements Closeable {
             // Support multi-factor authentication by continuing after partial success
             while (!allowedMethods.isEmpty() && !authenticated.get()) {
                 // Try each authentication method in the current allowed methods list
-                boolean partialSuccessInThisRound = false;
+                boolean hadPartialSuccess = false;
                 
                 for (String authMethod : allowedMethods) {
                     if (closed.get()) {
@@ -233,7 +233,7 @@ public class SSHHandler implements Closeable {
                             passwordAuth(authenticated);
                             break;
                         default:
-                            throw new IllegalStateException("Unexpected value: " + authMethod);
+                            throw new IllegalStateException("Unsupported authentication method: " + authMethod);
                     }
 
                     if (authenticated.get()) {
@@ -245,13 +245,13 @@ public class SSHHandler implements Closeable {
                     // If so, we need to break out and start over with new methods
                     if (sshj.getUserAuth().hadPartialSuccess()) {
                         log.info("Partial authentication successful, updating allowed methods");
-                        partialSuccessInThisRound = true;
+                        hadPartialSuccess = true;
                         break;
                     }
                 }
                 
                 // Update allowed methods after partial success
-                if (partialSuccessInThisRound) {
+                if (hadPartialSuccess) {
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
                     log.info("Remaining authentication methods required: {}", allowedMethods);
                 } else {
