@@ -209,7 +209,10 @@ public class SSHHandler implements Closeable {
             // order sent by server
             // Support multi-factor authentication by continuing after partial success
             while (!allowedMethods.isEmpty() && !authenticated.get()) {
-                for (String authMethod : new ArrayList<>(allowedMethods)) {
+                // Try each authentication method in the current allowed methods list
+                boolean partialSuccessInThisRound = false;
+                
+                for (String authMethod : allowedMethods) {
                     if (closed.get()) {
                         disconnect();
                         throw new OperationCancelledException();
@@ -237,16 +240,22 @@ public class SSHHandler implements Closeable {
                         log.info("Authentication fully successful");
                         return;
                     }
+                    
+                    // Check if this method resulted in partial success
+                    // If so, we need to break out and start over with new methods
+                    if (sshj.getUserAuth().hadPartialSuccess()) {
+                        log.info("Partial authentication successful, updating allowed methods");
+                        partialSuccessInThisRound = true;
+                        break;
+                    }
                 }
                 
-                // Check for partial authentication success
-                if (sshj.getUserAuth().hadPartialSuccess()) {
-                    log.info("Partial authentication successful, updating allowed methods");
-                    // Update allowed methods with remaining required authentication methods
+                // Update allowed methods after partial success
+                if (partialSuccessInThisRound) {
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
                     log.info("Remaining authentication methods required: {}", allowedMethods);
                 } else {
-                    // No partial success and not authenticated - break the loop
+                    // No partial success and not authenticated - exit the loop
                     break;
                 }
             }
