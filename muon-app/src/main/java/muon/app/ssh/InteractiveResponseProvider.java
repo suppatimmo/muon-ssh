@@ -45,7 +45,7 @@ public class InteractiveResponseProvider implements ChallengeResponseProvider {
         } else {
             JPasswordField passwordField = new JPasswordField(30);
             int ret = OptionPaneUtils.showOptionDialog(null,
-                                                       new Object[]{prompt, passwordField}, App.getCONTEXT().getBundle().getString("Input"));
+                                                       new Object[]{prompt, passwordField}, App.getCONTEXT().getBundle().getString("input"));
             if (ret == JOptionPane.OK_OPTION) {
                 return passwordField.getPassword();
             }
