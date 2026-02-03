@@ -227,30 +227,15 @@ public class SSHHandler implements Closeable {
 
                     switch (authMethod) {
                         case "publickey":
-                            try {
-                                publicKeyAuth(authenticated);
-                            } catch (IOException e) {
-                                // Connection lost, propagate the error
-                                throw e;
-                            }
+                            publicKeyAuth(authenticated);
                             break;
 
                         case "keyboard-interactive":
-                            try {
-                                keyboardAuth(authenticated);
-                            } catch (IOException e) {
-                                // Connection lost, propagate the error
-                                throw e;
-                            }
+                            keyboardAuth(authenticated);
                             break;
 
                         case "password":
-                            try {
-                                passwordAuth(authenticated);
-                            } catch (IOException e) {
-                                // Connection lost, propagate the error
-                                throw e;
-                            }
+                            passwordAuth(authenticated);
                             break;
                         default:
                             throw new IllegalStateException("Unsupported authentication method: " + authMethod);
@@ -307,9 +292,14 @@ public class SSHHandler implements Closeable {
             disconnect();
             throw e;
         } catch (IllegalStateException e) {
-            // Connection lost during authentication
-            log.error("Connection lost during password authentication: {}", e.getMessage());
-            throw new IOException("Connection lost during authentication", e);
+            // Handle "Not connected" IllegalStateException from SSH library
+            // This occurs when the connection is lost during authentication
+            if (e.getMessage() != null && e.getMessage().contains("Not connected")) {
+                log.error("Connection lost during password authentication: {}", e.getMessage());
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // Re-throw other IllegalStateExceptions as they indicate programming errors
+            throw e;
         } catch (Exception e) {
             log.error("Password authentication failed: {}", e.getMessage(), e);
         }
@@ -325,9 +315,14 @@ public class SSHHandler implements Closeable {
                 log.info("Keyboard-interactive authentication succeeded with partial success, additional authentication required");
             }
         } catch (IllegalStateException e) {
-            // Connection lost during authentication
-            log.error("Connection lost during keyboard-interactive authentication: {}", e.getMessage());
-            throw new IOException("Connection lost during authentication", e);
+            // Handle "Not connected" IllegalStateException from SSH library
+            // This occurs when the connection is lost during authentication
+            if (e.getMessage() != null && e.getMessage().contains("Not connected")) {
+                log.error("Connection lost during keyboard-interactive authentication: {}", e.getMessage());
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // Re-throw other IllegalStateExceptions as they indicate programming errors
+            throw e;
         } catch (Exception e) {
             log.error("Keyboard-interactive authentication failed: {}", e.getMessage(), e);
         }
@@ -346,9 +341,14 @@ public class SSHHandler implements Closeable {
             disconnect();
             throw e;
         } catch (IllegalStateException e) {
-            // Connection lost during authentication
-            log.error("Connection lost during public key authentication: {}", e.getMessage());
-            throw new IOException("Connection lost during authentication", e);
+            // Handle "Not connected" IllegalStateException from SSH library
+            // This occurs when the connection is lost during authentication
+            if (e.getMessage() != null && e.getMessage().contains("Not connected")) {
+                log.error("Connection lost during public key authentication: {}", e.getMessage());
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // Re-throw other IllegalStateExceptions as they indicate programming errors
+            throw e;
         } catch (Exception e) {
             log.error("Public key authentication failed: {}", e.getMessage(), e);
         }
