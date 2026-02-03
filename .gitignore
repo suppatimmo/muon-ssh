@@ -19,3 +19,4 @@ muon-app/target/maven-archiver/pom.properties
 /.iac-data/
 /.vscode/
 /.idea/
+muon-jediterm/

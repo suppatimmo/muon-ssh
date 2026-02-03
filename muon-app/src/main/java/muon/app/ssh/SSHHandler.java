@@ -207,36 +207,62 @@ public class SSHHandler implements Closeable {
 
             // loop over servers preferred authentication methods in the same
             // order sent by server
-            for (String authMethod : allowedMethods) {
-                if (closed.get()) {
-                    disconnect();
-                    throw new OperationCancelledException();
+            // Support multi-factor authentication by continuing after partial success
+            while (!allowedMethods.isEmpty() && !authenticated.get()) {
+                // Try each authentication method in the current allowed methods list
+                boolean hadPartialSuccess = false;
+                
+                for (String authMethod : allowedMethods) {
+                    if (closed.get()) {
+                        disconnect();
+                        throw new OperationCancelledException();
+                    }
+
+                    log.info("Trying auth method: {}", authMethod);
+
+                    switch (authMethod) {
+                        case "publickey":
+                            publicKeyAuth(authenticated);
+                            break;
+
+                        case "keyboard-interactive":
+                            keyboardAuth(authenticated);
+                            break;
+
+                        case "password":
+                            passwordAuth(authenticated);
+                            break;
+                        default:
+                            throw new IllegalStateException("Unsupported authentication method: " + authMethod);
+                    }
+
+                    if (authenticated.get()) {
+                        log.info("Authentication fully successful");
+                        return;
+                    }
+                    
+                    // Check if this method resulted in partial success
+                    // If so, we need to break out and start over with new methods
+                    if (sshj.getUserAuth().hadPartialSuccess()) {
+                        log.info("Partial authentication successful, updating allowed methods");
+                        hadPartialSuccess = true;
+                        break;
+                    }
                 }
-
-                log.info("Trying auth method: {}", authMethod);
-
-                switch (authMethod) {
-                    case "publickey":
-                        publicKeyAuth(authenticated);
-                        break;
-
-                    case "keyboard-interactive":
-                        keyboardAuth(authenticated);
-                        break;
-
-                    case "password":
-                        passwordAuth(authenticated);
-                        break;
-                    default:
-                        throw new IllegalStateException("Unexpected value: " + authMethod);
-                }
-
-                if (authenticated.get()) {
-                    return;
+                
+                // Update allowed methods after partial success
+                if (hadPartialSuccess) {
+                    allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
+                    log.info("Remaining authentication methods required: {}", allowedMethods);
+                } else {
+                    // No partial success and not authenticated - exit the loop
+                    break;
                 }
             }
 
-            throw new IOException("Authentication failed");
+            if (!authenticated.get()) {
+                throw new IOException("Authentication failed");
+            }
 
         } catch (Exception e) {
             if (this.sshj != null) {
@@ -251,7 +277,12 @@ public class SSHHandler implements Closeable {
     private void passwordAuth(AtomicBoolean authenticated) throws OperationCancelledException {
         try {
             this.authPassword();
-            authenticated.set(true);
+            // Check if authentication is complete or partial
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
+                authenticated.set(true);
+            } else {
+                log.info("Password authentication succeeded with partial success, additional authentication required");
+            }
         } catch (OperationCancelledException e) {
             disconnect();
             throw e;
@@ -263,7 +294,12 @@ public class SSHHandler implements Closeable {
     private void keyboardAuth(AtomicBoolean authenticated) {
         try {
             sshj.auth(promptUser(), new AuthKeyboardInteractive(new InteractiveResponseProvider()));
-            authenticated.set(true);
+            // Check if authentication is complete or partial
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
+                authenticated.set(true);
+            } else {
+                log.info("Keyboard-interactive authentication succeeded with partial success, additional authentication required");
+            }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
@@ -272,7 +308,12 @@ public class SSHHandler implements Closeable {
     private void publicKeyAuth(AtomicBoolean authenticated) throws OperationCancelledException {
         try {
             this.authPublicKey();
-            authenticated.set(true);
+            // Check if authentication is complete or partial
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
+                authenticated.set(true);
+            } else {
+                log.info("Public key authentication succeeded with partial success, additional authentication required");
+            }
         } catch (OperationCancelledException e) {
             disconnect();
             throw e;
