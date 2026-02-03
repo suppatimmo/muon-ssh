@@ -209,6 +209,11 @@ public class SSHHandler implements Closeable {
             // order sent by server
             // Support multi-factor authentication by continuing after partial success
             while (!allowedMethods.isEmpty() && !authenticated.get()) {
+                // Check if connection is still alive before attempting authentication
+                if (!sshj.isConnected()) {
+                    throw new IOException("SSH connection lost during authentication");
+                }
+                
                 // Try each authentication method in the current allowed methods list
                 boolean hadPartialSuccess = false;
                 
@@ -222,15 +227,30 @@ public class SSHHandler implements Closeable {
 
                     switch (authMethod) {
                         case "publickey":
-                            publicKeyAuth(authenticated);
+                            try {
+                                publicKeyAuth(authenticated);
+                            } catch (IOException e) {
+                                // Connection lost, propagate the error
+                                throw e;
+                            }
                             break;
 
                         case "keyboard-interactive":
-                            keyboardAuth(authenticated);
+                            try {
+                                keyboardAuth(authenticated);
+                            } catch (IOException e) {
+                                // Connection lost, propagate the error
+                                throw e;
+                            }
                             break;
 
                         case "password":
-                            passwordAuth(authenticated);
+                            try {
+                                passwordAuth(authenticated);
+                            } catch (IOException e) {
+                                // Connection lost, propagate the error
+                                throw e;
+                            }
                             break;
                         default:
                             throw new IllegalStateException("Unsupported authentication method: " + authMethod);
@@ -274,7 +294,7 @@ public class SSHHandler implements Closeable {
         }
     }
 
-    private void passwordAuth(AtomicBoolean authenticated) throws OperationCancelledException {
+    private void passwordAuth(AtomicBoolean authenticated) throws OperationCancelledException, IOException {
         try {
             this.authPassword();
             // Check if authentication is complete or partial
@@ -286,12 +306,16 @@ public class SSHHandler implements Closeable {
         } catch (OperationCancelledException e) {
             disconnect();
             throw e;
+        } catch (IllegalStateException e) {
+            // Connection lost during authentication
+            log.error("Connection lost during password authentication: {}", e.getMessage());
+            throw new IOException("Connection lost during authentication", e);
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Password authentication failed: {}", e.getMessage(), e);
         }
     }
 
-    private void keyboardAuth(AtomicBoolean authenticated) {
+    private void keyboardAuth(AtomicBoolean authenticated) throws IOException {
         try {
             sshj.auth(promptUser(), new AuthKeyboardInteractive(new InteractiveResponseProvider()));
             // Check if authentication is complete or partial
@@ -300,12 +324,16 @@ public class SSHHandler implements Closeable {
             } else {
                 log.info("Keyboard-interactive authentication succeeded with partial success, additional authentication required");
             }
+        } catch (IllegalStateException e) {
+            // Connection lost during authentication
+            log.error("Connection lost during keyboard-interactive authentication: {}", e.getMessage());
+            throw new IOException("Connection lost during authentication", e);
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Keyboard-interactive authentication failed: {}", e.getMessage(), e);
         }
     }
 
-    private void publicKeyAuth(AtomicBoolean authenticated) throws OperationCancelledException {
+    private void publicKeyAuth(AtomicBoolean authenticated) throws OperationCancelledException, IOException {
         try {
             this.authPublicKey();
             // Check if authentication is complete or partial
@@ -317,8 +345,12 @@ public class SSHHandler implements Closeable {
         } catch (OperationCancelledException e) {
             disconnect();
             throw e;
+        } catch (IllegalStateException e) {
+            // Connection lost during authentication
+            log.error("Connection lost during public key authentication: {}", e.getMessage());
+            throw new IOException("Connection lost during authentication", e);
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("Public key authentication failed: {}", e.getMessage(), e);
         }
     }
 
