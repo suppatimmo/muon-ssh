@@ -240,7 +240,7 @@ public class SSHHandler implements Closeable {
                 }
                 
                 // Check for partial authentication success
-                if (sshj.getUserAuth().isPartial()) {
+                if (sshj.getUserAuth().hadPartialSuccess()) {
                     log.info("Partial authentication successful, updating allowed methods");
                     // Update allowed methods with remaining required authentication methods
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
@@ -269,7 +269,7 @@ public class SSHHandler implements Closeable {
         try {
             this.authPassword();
             // Check if authentication is complete or partial
-            if (!sshj.getUserAuth().isPartial()) {
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
                 authenticated.set(true);
             } else {
                 log.info("Password authentication succeeded with partial success, additional authentication required");
@@ -286,7 +286,7 @@ public class SSHHandler implements Closeable {
         try {
             sshj.auth(promptUser(), new AuthKeyboardInteractive(new InteractiveResponseProvider()));
             // Check if authentication is complete or partial
-            if (!sshj.getUserAuth().isPartial()) {
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
                 authenticated.set(true);
             } else {
                 log.info("Keyboard-interactive authentication succeeded with partial success, additional authentication required");
@@ -300,7 +300,7 @@ public class SSHHandler implements Closeable {
         try {
             this.authPublicKey();
             // Check if authentication is complete or partial
-            if (!sshj.getUserAuth().isPartial()) {
+            if (!sshj.getUserAuth().hadPartialSuccess()) {
                 authenticated.set(true);
             } else {
                 log.info("Public key authentication succeeded with partial success, additional authentication required");
