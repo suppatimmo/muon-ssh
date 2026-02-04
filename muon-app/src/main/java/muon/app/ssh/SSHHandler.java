@@ -276,6 +276,10 @@ public class SSHHandler implements Closeable {
                 if (hadPartialSuccess) {
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
                     log.info("Remaining authentication methods required: {}", allowedMethods);
+                    // Clear used methods to allow reuse in multi-factor authentication
+                    // This is necessary for scenarios like keyboard-interactive being used
+                    // multiple times (e.g., password + verification code)
+                    usedAuthMethods.clear();
                 } else {
                     // No partial success and not authenticated - exit the loop
                     break;
