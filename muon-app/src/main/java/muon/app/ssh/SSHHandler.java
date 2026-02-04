@@ -280,10 +280,37 @@ public class SSHHandler implements Closeable {
                 if (hadPartialSuccess) {
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
                     log.info("Remaining authentication methods required: {}", allowedMethods);
-                    // Clear used methods to allow reuse in multi-factor authentication
-                    // This is necessary for scenarios like keyboard-interactive being used
-                    // multiple times (e.g., password + verification code)
-                    usedAuthMethods.clear();
+                    // Do NOT clear usedAuthMethods here. Some SSH servers send SSH_MSG_UNIMPLEMENTED
+                    // when the same authentication method is attempted twice in a single session,
+                    // even after partial success. By keeping track of used methods, we avoid
+                    // re-attempting methods that would cause this protocol error.
+                    
+                    // Check if all remaining methods have already been used
+                    // This can happen when the server indicates partial success but lists
+                    // methods we've already tried. In this case, check if we're actually
+                    // fully authenticated despite the partial success flag.
+                    boolean hasUnusedMethods = false;
+                    for (String method : allowedMethods) {
+                        if (!usedAuthMethods.contains(method)) {
+                            hasUnusedMethods = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasUnusedMethods) {
+                        log.info("All remaining auth methods already used, checking if actually authenticated");
+                        // Some servers incorrectly report partial success when authentication is complete
+                        // or list methods that would result in SSH_MSG_UNIMPLEMENTED if retried.
+                        // Check if we're actually authenticated.
+                        if (sshj.isAuthenticated()) {
+                            log.info("Authentication confirmed despite partial success flag");
+                            authenticated.set(true);
+                            return;
+                        }
+                        // If not authenticated and no new methods available, exit the loop
+                        log.warn("All auth methods exhausted but not authenticated");
+                        break;
+                    }
                 } else {
                     // No partial success and not authenticated - exit the loop
                     break;
