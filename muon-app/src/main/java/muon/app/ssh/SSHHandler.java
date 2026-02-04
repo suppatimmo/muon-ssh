@@ -210,8 +210,12 @@ public class SSHHandler implements Closeable {
             // Support multi-factor authentication by continuing after partial success
             // Track which methods have been used to prevent reusing the same method
             Set<String> usedAuthMethods = new HashSet<>();
+            // Limit authentication rounds to prevent infinite loops from malicious servers
+            final int MAX_AUTH_ROUNDS = 10;
+            int authRound = 0;
             
-            while (!allowedMethods.isEmpty() && !authenticated.get()) {
+            while (!allowedMethods.isEmpty() && !authenticated.get() && authRound < MAX_AUTH_ROUNDS) {
+                authRound++;
                 // Check if connection is still alive before attempting authentication
                 if (!sshj.isConnected()) {
                     throw new IOException("SSH connection lost during authentication");
@@ -287,6 +291,9 @@ public class SSHHandler implements Closeable {
             }
 
             if (!authenticated.get()) {
+                if (authRound >= MAX_AUTH_ROUNDS) {
+                    throw new IOException("Authentication failed: maximum authentication rounds exceeded");
+                }
                 throw new IOException("Authentication failed");
             }
 
