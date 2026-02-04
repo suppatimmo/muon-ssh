@@ -77,15 +77,12 @@ public class InteractiveResponseProvider implements ChallengeResponseProvider {
                     return passwordField.getPassword();
                 }
             }
-            retry = false;
-            return new char[0];
-        } finally {
-            // Restore original timeout
-            try {
-                log.debug("Restoring SSH timeout to {}ms", originalTimeout);
-                sshClient.setTimeout(originalTimeout);
-            } catch (Exception e) {
-                log.warn("Failed to restore original SSH timeout: {}", e.getMessage());
+        } else {
+            JPasswordField passwordField = new JPasswordField(30);
+            int ret = OptionPaneUtils.showOptionDialog(null,
+                                                       new Object[]{prompt, passwordField}, App.getCONTEXT().getBundle().getString("input"));
+            if (ret == JOptionPane.OK_OPTION) {
+                return passwordField.getPassword();
             }
         }
     }
