@@ -418,6 +418,10 @@ public class SSHHandler implements Closeable {
             if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
                 log.info("Authentication succeeded despite exception, continuing");
                 authenticated.set(true);
+                // Log connection state for diagnostic purposes
+                if (!sshj.isConnected()) {
+                    log.warn("Authentication succeeded but connection was lost - this may cause issues later");
+                }
                 return true;
             }
         } catch (Exception checkEx) {
