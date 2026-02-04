@@ -308,15 +308,8 @@ public class SSHHandler implements Closeable {
             // Check if authentication actually succeeded despite the exception
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
-            try {
-                // Check both hadPartialSuccess and isAuthenticated for robust detection
-                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
-                    log.info("Authentication succeeded despite exception, continuing");
-                    authenticated.set(true);
-                    return;
-                }
-            } catch (Exception checkEx) {
-                log.debug("Failed to check authentication status: {}", checkEx.getMessage());
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
             }
             
             // Check if the connection was lost due to this exception
@@ -354,15 +347,8 @@ public class SSHHandler implements Closeable {
             // Check if authentication actually succeeded despite the exception
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
-            try {
-                // Check both hadPartialSuccess and isAuthenticated for robust detection
-                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
-                    log.info("Authentication succeeded despite exception, continuing");
-                    authenticated.set(true);
-                    return;
-                }
-            } catch (Exception checkEx) {
-                log.debug("Failed to check authentication status: {}", checkEx.getMessage());
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
             }
             
             // Check if the connection was lost due to this exception
@@ -403,15 +389,8 @@ public class SSHHandler implements Closeable {
             // Check if authentication actually succeeded despite the exception
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
-            try {
-                // Check both hadPartialSuccess and isAuthenticated for robust detection
-                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
-                    log.info("Authentication succeeded despite exception, continuing");
-                    authenticated.set(true);
-                    return;
-                }
-            } catch (Exception checkEx) {
-                log.debug("Failed to check authentication status: {}", checkEx.getMessage());
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
             }
             
             // Check if the connection was lost due to this exception
@@ -421,6 +400,30 @@ public class SSHHandler implements Closeable {
             }
             // For other exceptions (like wrong key), don't throw - allow retry or continuation
         }
+    }
+
+    /**
+     * Checks if authentication completed successfully despite an exception being thrown.
+     * This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other protocol
+     * messages after successful authentication.
+     *
+     * @param authenticated The AtomicBoolean to set if authentication is confirmed successful
+     * @return true if authentication succeeded and authenticated was set, false otherwise
+     */
+    private boolean checkAuthenticationSucceededDespiteException(AtomicBoolean authenticated) {
+        try {
+            // Check both isAuthenticated and hadPartialSuccess for robust detection
+            // isAuthenticated() confirms the authentication completed
+            // !hadPartialSuccess() confirms it's not just partial success
+            if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
+                log.info("Authentication succeeded despite exception, continuing");
+                authenticated.set(true);
+                return true;
+            }
+        } catch (Exception checkEx) {
+            log.debug("Failed to check authentication status: {}", checkEx.getMessage());
+        }
+        return false;
     }
 
     private void initializeSSHClient() {
