@@ -237,6 +237,9 @@ public class SSHHandler implements Closeable {
                     log.info("Trying auth method: {}", authMethod);
                     
                     // Mark this method as used before attempting it
+                    // Note: We mark it as used regardless of success/failure because some SSH servers
+                    // send SSH_MSG_UNIMPLEMENTED if the same method is attempted twice in one session,
+                    // even if both attempts would otherwise succeed. This prevents that error.
                     usedAuthMethods.add(authMethod);
 
                     switch (authMethod) {
