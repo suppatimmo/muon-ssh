@@ -456,6 +456,13 @@ public class SSHHandler implements Closeable {
                 log.error("Connection lost during public key authentication: {}", e.getMessage());
                 throw new IOException("Connection lost during authentication", e);
             }
+            // Handle "No suitable key providers" - this occurs when no private key file is configured
+            // In this case, we should not throw but allow authentication to continue with other methods
+            // (e.g., password authentication)
+            if (e.getMessage() != null && e.getMessage().contains("No suitable key providers")) {
+                log.info("No private key configured, skipping public key authentication: {}", e.getMessage());
+                return;
+            }
             // Re-throw other IllegalStateExceptions as they indicate programming errors
             throw e;
         } catch (Exception e) {
