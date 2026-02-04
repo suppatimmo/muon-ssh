@@ -46,6 +46,7 @@ import static muon.app.util.PlatformUtils.IS_MAC;
 public class SSHHandler implements Closeable {
     private static final int CONNECTION_TIMEOUT = App.getGlobalSettings().getConnectionTimeout() * 1000;
     public static final String LOCALHOST = "127.0.0.1";
+    private static final int MAX_AUTH_ROUNDS = 10;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     @Getter
@@ -210,8 +211,11 @@ public class SSHHandler implements Closeable {
             // Support multi-factor authentication by continuing after partial success
             // Track which methods have been used to prevent reusing the same method
             Set<String> usedAuthMethods = new HashSet<>();
+            // Limit authentication rounds to prevent infinite loops from malicious servers
+            int authRound = 0;
             
-            while (!allowedMethods.isEmpty() && !authenticated.get()) {
+            while (!allowedMethods.isEmpty() && !authenticated.get() && authRound < MAX_AUTH_ROUNDS) {
+                authRound++;
                 // Check if connection is still alive before attempting authentication
                 if (!sshj.isConnected()) {
                     throw new IOException("SSH connection lost during authentication");
@@ -276,6 +280,10 @@ public class SSHHandler implements Closeable {
                 if (hadPartialSuccess) {
                     allowedMethods = new ArrayList<>(sshj.getUserAuth().getAllowedMethods());
                     log.info("Remaining authentication methods required: {}", allowedMethods);
+                    // Clear used methods to allow reuse in multi-factor authentication
+                    // This is necessary for scenarios like keyboard-interactive being used
+                    // multiple times (e.g., password + verification code)
+                    usedAuthMethods.clear();
                 } else {
                     // No partial success and not authenticated - exit the loop
                     break;
@@ -283,6 +291,9 @@ public class SSHHandler implements Closeable {
             }
 
             if (!authenticated.get()) {
+                if (authRound >= MAX_AUTH_ROUNDS) {
+                    throw new IOException("Authentication failed: maximum authentication rounds (" + MAX_AUTH_ROUNDS + ") exceeded");
+                }
                 throw new IOException("Authentication failed");
             }
 
