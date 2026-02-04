@@ -46,6 +46,7 @@ import static muon.app.util.PlatformUtils.IS_MAC;
 public class SSHHandler implements Closeable {
     private static final int CONNECTION_TIMEOUT = App.getGlobalSettings().getConnectionTimeout() * 1000;
     public static final String LOCALHOST = "127.0.0.1";
+    private static final int MAX_AUTH_ROUNDS = 10;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     @Getter
@@ -211,7 +212,6 @@ public class SSHHandler implements Closeable {
             // Track which methods have been used to prevent reusing the same method
             Set<String> usedAuthMethods = new HashSet<>();
             // Limit authentication rounds to prevent infinite loops from malicious servers
-            final int MAX_AUTH_ROUNDS = 10;
             int authRound = 0;
             
             while (!allowedMethods.isEmpty() && !authenticated.get() && authRound < MAX_AUTH_ROUNDS) {
@@ -292,7 +292,7 @@ public class SSHHandler implements Closeable {
 
             if (!authenticated.get()) {
                 if (authRound >= MAX_AUTH_ROUNDS) {
-                    throw new IOException("Authentication failed: maximum authentication rounds exceeded");
+                    throw new IOException("Authentication failed: maximum authentication rounds (" + MAX_AUTH_ROUNDS + ") exceeded");
                 }
                 throw new IOException("Authentication failed");
             }
