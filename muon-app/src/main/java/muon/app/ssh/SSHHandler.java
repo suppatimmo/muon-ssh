@@ -208,6 +208,9 @@ public class SSHHandler implements Closeable {
             // loop over servers preferred authentication methods in the same
             // order sent by server
             // Support multi-factor authentication by continuing after partial success
+            // Track which methods have been used to prevent reusing the same method
+            Set<String> usedAuthMethods = new HashSet<>();
+            
             while (!allowedMethods.isEmpty() && !authenticated.get()) {
                 // Check if connection is still alive before attempting authentication
                 if (!sshj.isConnected()) {
@@ -222,8 +225,22 @@ public class SSHHandler implements Closeable {
                         disconnect();
                         throw new OperationCancelledException();
                     }
+                    
+                    // Skip methods that have already been used
+                    // Some SSH servers don't support reusing the same authentication method
+                    // in multi-factor authentication flows and will send SSH_MSG_UNIMPLEMENTED
+                    if (usedAuthMethods.contains(authMethod)) {
+                        log.info("Skipping already-used auth method: {}", authMethod);
+                        continue;
+                    }
 
                     log.info("Trying auth method: {}", authMethod);
+                    
+                    // Mark this method as used before attempting it
+                    // Note: We mark it as used regardless of success/failure because some SSH servers
+                    // send SSH_MSG_UNIMPLEMENTED if the same method is attempted twice in one session,
+                    // even if both attempts would otherwise succeed. This prevents that error.
+                    usedAuthMethods.add(authMethod);
 
                     switch (authMethod) {
                         case "publickey":
