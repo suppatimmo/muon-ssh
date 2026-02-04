@@ -304,6 +304,12 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Password authentication failed: {}", e.getMessage(), e);
+            // Check if the connection was lost due to this exception
+            // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
+            if (!sshj.isConnected()) {
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // For other exceptions (like wrong password), don't throw - allow retry or continuation
         }
     }
 
@@ -329,6 +335,12 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Keyboard-interactive authentication failed: {}", e.getMessage(), e);
+            // Check if the connection was lost due to this exception
+            // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
+            if (!sshj.isConnected()) {
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // For other exceptions (like wrong password), don't throw - allow retry or continuation
         }
     }
 
@@ -357,6 +369,12 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Public key authentication failed: {}", e.getMessage(), e);
+            // Check if the connection was lost due to this exception
+            // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
+            if (!sshj.isConnected()) {
+                throw new IOException("Connection lost during authentication", e);
+            }
+            // For other exceptions (like wrong key), don't throw - allow retry or continuation
         }
     }
 
