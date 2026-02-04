@@ -309,7 +309,8 @@ public class SSHHandler implements Closeable {
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
             try {
-                if (!sshj.getUserAuth().hadPartialSuccess()) {
+                // Check both hadPartialSuccess and isAuthenticated for robust detection
+                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
                     log.info("Authentication succeeded despite exception, continuing");
                     authenticated.set(true);
                     return;
@@ -354,7 +355,8 @@ public class SSHHandler implements Closeable {
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
             try {
-                if (!sshj.getUserAuth().hadPartialSuccess()) {
+                // Check both hadPartialSuccess and isAuthenticated for robust detection
+                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
                     log.info("Authentication succeeded despite exception, continuing");
                     authenticated.set(true);
                     return;
@@ -402,7 +404,8 @@ public class SSHHandler implements Closeable {
             // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
             // protocol messages after successful authentication
             try {
-                if (!sshj.getUserAuth().hadPartialSuccess()) {
+                // Check both hadPartialSuccess and isAuthenticated for robust detection
+                if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
                     log.info("Authentication succeeded despite exception, continuing");
                     authenticated.set(true);
                     return;
