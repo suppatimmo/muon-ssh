@@ -304,6 +304,14 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Password authentication failed: {}", e.getMessage(), e);
+            
+            // Check if authentication actually succeeded despite the exception
+            // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
+            // protocol messages after successful authentication
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
+            }
+            
             // Check if the connection was lost due to this exception
             // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
             if (!sshj.isConnected()) {
@@ -335,6 +343,14 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Keyboard-interactive authentication failed: {}", e.getMessage(), e);
+            
+            // Check if authentication actually succeeded despite the exception
+            // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
+            // protocol messages after successful authentication
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
+            }
+            
             // Check if the connection was lost due to this exception
             // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
             if (!sshj.isConnected()) {
@@ -369,6 +385,14 @@ public class SSHHandler implements Closeable {
             throw e;
         } catch (Exception e) {
             log.error("Public key authentication failed: {}", e.getMessage(), e);
+            
+            // Check if authentication actually succeeded despite the exception
+            // This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other 
+            // protocol messages after successful authentication
+            if (checkAuthenticationSucceededDespiteException(authenticated)) {
+                return;
+            }
+            
             // Check if the connection was lost due to this exception
             // This can happen with SSH_MSG_UNIMPLEMENTED or other protocol errors
             if (!sshj.isConnected()) {
@@ -376,6 +400,34 @@ public class SSHHandler implements Closeable {
             }
             // For other exceptions (like wrong key), don't throw - allow retry or continuation
         }
+    }
+
+    /**
+     * Checks if authentication completed successfully despite an exception being thrown.
+     * This can happen when the server sends SSH_MSG_UNIMPLEMENTED or other protocol
+     * messages after successful authentication.
+     *
+     * @param authenticated The AtomicBoolean to set if authentication is confirmed successful
+     * @return true if authentication succeeded and authenticated was set, false otherwise
+     */
+    private boolean checkAuthenticationSucceededDespiteException(AtomicBoolean authenticated) {
+        try {
+            // Check both isAuthenticated and hadPartialSuccess for robust detection
+            // isAuthenticated() confirms the authentication completed
+            // !hadPartialSuccess() confirms it's not just partial success
+            if (sshj.isAuthenticated() && !sshj.getUserAuth().hadPartialSuccess()) {
+                log.info("Authentication succeeded despite exception, continuing");
+                authenticated.set(true);
+                // Log connection state for diagnostic purposes
+                if (!sshj.isConnected()) {
+                    log.warn("Authentication succeeded but connection was lost - this may cause issues later");
+                }
+                return true;
+            }
+        } catch (Exception checkEx) {
+            log.debug("Failed to check authentication status: {}", checkEx.getMessage());
+        }
+        return false;
     }
 
     private void initializeSSHClient() {
