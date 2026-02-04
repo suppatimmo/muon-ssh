@@ -137,22 +137,42 @@ public class SSHHandler implements Closeable {
         // keep on trying with password
         while (!closed.get()) {
             if (password == null || password.length < 1) {
-                JTextField txtUser = new SkinnedTextField(30);
-                JPasswordField txtPassword = new JPasswordField(30);
-                JCheckBox chkUseCache = new JCheckBox(App.getCONTEXT().getBundle().getString("remember_session"));
-                txtUser.setText(user);
-                int ret = OptionPaneUtils.showOptionDialog(App.getAppWindow(),
-                                                           new Object[]{"User", txtUser, "Password", txtPassword, chkUseCache}, App.getCONTEXT().getBundle().getString("authentication"));
-
-                if (ret != JOptionPane.OK_OPTION) {
-                    throw new OperationCancelledException();
+                // Temporarily extend timeout to 5 minutes (300 seconds) to allow user time to respond
+                // This is especially important for users who need time to enter credentials
+                final int extendedTimeout = 300000; // 5 minutes in milliseconds
+                try {
+                    log.debug("Extending SSH timeout from {}ms to {}ms for user input", CONNECTION_TIMEOUT, extendedTimeout);
+                    sshj.setTimeout(extendedTimeout);
+                } catch (Exception e) {
+                    log.error("Failed to extend SSH timeout for password input - authentication may fail if user takes too long: {}", e.getMessage());
                 }
+                
+                try {
+                    JTextField txtUser = new SkinnedTextField(30);
+                    JPasswordField txtPassword = new JPasswordField(30);
+                    JCheckBox chkUseCache = new JCheckBox(App.getCONTEXT().getBundle().getString("remember_session"));
+                    txtUser.setText(user);
+                    int ret = OptionPaneUtils.showOptionDialog(App.getAppWindow(),
+                                                               new Object[]{"User", txtUser, "Password", txtPassword, chkUseCache}, App.getCONTEXT().getBundle().getString("authentication"));
 
-                user = txtUser.getText();
-                password = txtPassword.getPassword();
-                if (chkUseCache.isSelected()) {
-                    cachedCredentialProvider.setCachedUser(user);
-                    cachedCredentialProvider.cachePassword(new String(password));
+                    if (ret != JOptionPane.OK_OPTION) {
+                        throw new OperationCancelledException();
+                    }
+
+                    user = txtUser.getText();
+                    password = txtPassword.getPassword();
+                    if (chkUseCache.isSelected()) {
+                        cachedCredentialProvider.setCachedUser(user);
+                        cachedCredentialProvider.cachePassword(new String(password));
+                    }
+                } finally {
+                    // Restore original timeout after user has responded
+                    try {
+                        log.debug("Restoring SSH timeout to original value: {}ms", CONNECTION_TIMEOUT);
+                        sshj.setTimeout(CONNECTION_TIMEOUT);
+                    } catch (Exception e) {
+                        log.warn("Failed to restore SSH timeout to {}ms - connection may have extended timeout for its lifecycle: {}", CONNECTION_TIMEOUT, e.getMessage());
+                    }
                 }
             }
             try {
