@@ -12,8 +12,8 @@ public class TotpUtilTest extends TestCase {
     private static final String RFC_TEST_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
     public void testBase32Decode_simple() {
-        // "JBSWY3DPEHPK3PXP" is Base32 for "Hello World!"
-        byte[] result = TotpUtil.decodeBase32("JBSWY3DPEHPK3PXP");
+        // "JBSWY3DPEBLW64TMMQQQ" is Base32 for "Hello World!"
+        byte[] result = TotpUtil.decodeBase32("JBSWY3DPEBLW64TMMQQQ");
         assertEquals("Hello World!".length(), result.length);
         assertEquals('H', (char) result[0]);
         assertEquals('e', (char) result[1]);
@@ -33,7 +33,7 @@ public class TotpUtilTest extends TestCase {
 
     public void testBase32Decode_withPadding() {
         // Padding characters should be stripped before decode
-        byte[] withPadding = TotpUtil.decodeBase32("JBSWY3DPEHPK3PXP");
+        byte[] withPadding = TotpUtil.decodeBase32("JBSWY3DPEBLW64TMMQQQ====");
         assertNotNull(withPadding);
         assertTrue(withPadding.length > 0);
     }
