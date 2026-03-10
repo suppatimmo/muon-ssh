@@ -19,6 +19,7 @@ import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
 import java.security.UnrecoverableKeyException;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -151,6 +152,11 @@ public final class PasswordStore {
                 } else {
                     log.debug("The info {} has no password", info.getHost());
                 }
+                char[] totpSecret = this.getSavedPassword("totp_" + info.getId());
+                if (totpSecret != null) {
+                    info.setTotpSecret(new String(totpSecret));
+                    Arrays.fill(totpSecret, '\0');
+                }
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
             }
@@ -189,6 +195,14 @@ public final class PasswordStore {
             if (password != null && !password.isEmpty()) {
                 try {
                     savePassword(info.getId(), password.toCharArray());
+                } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            String totpSecret = info.getTotpSecret();
+            if (totpSecret != null && !totpSecret.isEmpty()) {
+                try {
+                    savePassword("totp_" + info.getId(), totpSecret.toCharArray());
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                 }

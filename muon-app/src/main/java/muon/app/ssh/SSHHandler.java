@@ -398,7 +398,7 @@ public class SSHHandler implements Closeable {
 
     private void keyboardAuth(AtomicBoolean authenticated) throws IOException {
         try {
-            sshj.auth(promptUser(), new AuthKeyboardInteractive(new InteractiveResponseProvider(sshj, CONNECTION_TIMEOUT)));
+            sshj.auth(promptUser(), new AuthKeyboardInteractive(new InteractiveResponseProvider(sshj, CONNECTION_TIMEOUT, info.getTotpSecret())));
             // Check if authentication is complete or partial
             if (!sshj.getUserAuth().hadPartialSuccess()) {
                 authenticated.set(true);
