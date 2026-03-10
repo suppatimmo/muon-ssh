@@ -30,6 +30,7 @@ public class SessionInfoPanel extends JPanel {
     private JTextField inpLocalFolder;
     private JTextField inpRemoteFolder;
     private JTextField inpKeyFile;
+    private JPasswordField inpTotpSecret;
     private JLabel lblLocalFolder;
     private JLabel lblRemoteFolder;
     private SpinnerNumberModel portModel;
@@ -84,6 +85,7 @@ public class SessionInfoPanel extends JPanel {
         setUser(info.getUser());
         setPassword(info.getPassword() == null ? new char[0] : info.getPassword().toCharArray());
         setKeyFile(info.getPrivateKeyFile());
+        setTotpSecret(info.getTotpSecret() == null ? new char[0] : info.getTotpSecret().toCharArray());
         setProxyType(info.getProxyType());
         setProxyHost(info.getProxyHost());
         setProxyPort(info.getProxyPort());
@@ -143,6 +145,10 @@ public class SessionInfoPanel extends JPanel {
 
     private void setKeyFile(String keyFile) {
         inpKeyFile.setText(keyFile);
+    }
+
+    private void setTotpSecret(char[] secret) {
+        inpTotpSecret.setText(new String(secret));
     }
 
     private void showError(String msg) {
@@ -700,6 +706,41 @@ public class SessionInfoPanel extends JPanel {
             JOptionPane.showMessageDialog(this, ta, App.getCONTEXT().getBundle().getString("password"), JOptionPane.PLAIN_MESSAGE);
         });
 
+        JLabel lblTotpSecret = new JLabel(App.getCONTEXT().getBundle().getString("totp_secret"));
+        inpTotpSecret = new JPasswordField(10);
+        inpTotpSecret.setToolTipText(App.getCONTEXT().getBundle().getString("totp_secret_tooltip"));
+        inpTotpSecret.getDocument().addDocumentListener(new DocumentListener() {
+
+            @Override
+            public void removeUpdate(DocumentEvent arg0) {
+                updateTotpSecret();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent arg0) {
+                updateTotpSecret();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent arg0) {
+                updateTotpSecret();
+            }
+
+            private void updateTotpSecret() {
+                String secret = new String(inpTotpSecret.getPassword());
+                info.setTotpSecret(secret.isEmpty() ? null : secret);
+            }
+        });
+
+        JButton inpTotpShowSecret = new JButton(App.getCONTEXT().getBundle().getString("show"));
+        inpTotpShowSecret.addActionListener(e -> {
+            SkinnedTextArea ta = new SkinnedTextArea();
+            ta.setText(new String(inpTotpSecret.getPassword()));
+            ta.setEditable(false);
+            ta.setLineWrap(false);
+            JOptionPane.showMessageDialog(this, ta, App.getCONTEXT().getBundle().getString("totp_secret"), JOptionPane.PLAIN_MESSAGE);
+        });
+
         chkUseX11Forwarding = new JCheckBox("X11 forwarding");
 
         chkUseX11Forwarding.addActionListener(e -> info.setUseX11Forwarding(chkUseX11Forwarding.isSelected()));
@@ -792,12 +833,38 @@ public class SessionInfoPanel extends JPanel {
         c.gridx = 0;
         c.gridy = 11;
         c.gridwidth = 2;
+        c.insets = topInset;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.weightx = 1;
+        panel.add(lblTotpSecret, c);
+
+        c.gridx = 0;
+        c.gridy = 12;
+        c.gridwidth = 1;
         c.insets = noInset;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(inpTotpSecret, c);
+
+        c.gridx = 1;
+        c.gridy = 12;
+        c.gridwidth = 1;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        c.insets = new Insets(5, 0, 0, 8);
+        panel.add(inpTotpShowSecret, c);
+
+        c.gridx = 0;
+        c.gridy = 13;
+        c.gridwidth = 2;
+        c.insets = noInset;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.weightx = 1;
         panel.add(chkUseX11Forwarding, c);
 
         JPanel panel2 = new JPanel(new BorderLayout());
         c.gridx = 0;
-        c.gridy = 12;
+        c.gridy = 14;
         c.gridwidth = 1;
         c.weightx = 1;
         c.weighty = 10;

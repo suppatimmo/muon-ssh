@@ -84,6 +84,8 @@ public class SessionInfo extends NamedItem implements Serializable {
 
     private String password;
 
+    private String totpSecret;
+
     /**
      * @return the password
      */
@@ -100,6 +102,22 @@ public class SessionInfo extends NamedItem implements Serializable {
         this.password = password;
     }
 
+    /**
+     * @return the TOTP secret (Base32-encoded), or {@code null} if not set
+     */
+    @JsonIgnore
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    /**
+     * @param totpSecret the TOTP secret (Base32-encoded) to set
+     */
+    @JsonProperty
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
+
     public SessionInfo copy() {
         SessionInfo info = new SessionInfo();
         info.setId(UUID.randomUUID().toString());
@@ -110,6 +128,7 @@ public class SessionInfo extends NamedItem implements Serializable {
         info.setLocalFolder(this.localFolder);
         info.setRemoteFolder(this.remoteFolder);
         info.setPassword(this.password);
+        info.setTotpSecret(this.totpSecret);
         info.setPrivateKeyFile(privateKeyFile);
         info.setUser(user);
         info.setName(name);
@@ -132,7 +151,7 @@ public class SessionInfo extends NamedItem implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(host, user, localFolder, remoteFolder, port, favouriteRemoteFolders, favouriteLocalFolders, privateKeyFile, proxyPort, proxyHost, proxyUser, proxyPassword, proxyType, useJumpHosts, jumpType
-                , jumpHosts, portForwardingRules, password, useX11Forwarding);
+                , jumpHosts, portForwardingRules, password, totpSecret, useX11Forwarding);
     }
 
 
